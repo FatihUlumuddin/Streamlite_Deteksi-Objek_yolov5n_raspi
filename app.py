@@ -1,27 +1,32 @@
+import io
+import subprocess
+import time
+
+import av
+import numpy as np
 import streamlit as st
 import torch
 from PIL import Image
-import subprocess
-import io
-import numpy as np
-import time
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-import av
+from streamlit_webrtc import VideoTransformerBase, webrtc_streamer
+
 
 # Load YOLOv5n
 @st.cache_resource
 def load_model():
-    return torch.hub.load('ultralytics/yolov5', 'custom', path='yolov5n.pt', force_reload=True)
+    return torch.hub.load("ultralytics/yolov5", "custom", path="yolov5n.pt", force_reload=True)
+
 
 model = load_model()
 
 st.set_page_config(page_title="Deteksi Objek Raspi", layout="wide")
 st.title("🎯 Deteksi Objek Realtime dengan YOLOv5n - Raspberry Pi")
 
+
 # Fungsi Deteksi Gambar dari PIL
 def detect_image_pil(pil_img):
     results = model(pil_img)
     return Image.fromarray(np.squeeze(results.render()))
+
 
 # WebRTC Video Processor
 class YOLOTransformer(VideoTransformerBase):
@@ -32,12 +37,9 @@ class YOLOTransformer(VideoTransformerBase):
         result_img = np.squeeze(results.render())
         return result_img[:, :, ::-1]  # Convert back to BGR
 
+
 # UI Mode Pilihan
-mode = st.radio("Pilih Mode:", [
-    "📷 Upload Gambar dari HP",
-    "📡 Live RaspiCam",
-    "📱 Kamera HP Live Langsung (Browser)"
-])
+mode = st.radio("Pilih Mode:", ["📷 Upload Gambar dari HP", "📡 Live RaspiCam", "📱 Kamera HP Live Langsung (Browser)"])
 
 # 📷 MODE 1: Upload Gambar
 if mode == "📷 Upload Gambar dari HP":
@@ -66,7 +68,7 @@ elif mode == "📡 Live RaspiCam":
                 ["libcamera-jpeg", "-n", "-t", "300", "--width", "320", "--height", "240", "-o", "-"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
-                timeout=5
+                timeout=5,
             )
 
             if proc.returncode != 0 or not proc.stdout:
@@ -74,8 +76,8 @@ elif mode == "📡 Live RaspiCam":
                 break
 
             # Buka & flip horizontal
-            #img = Image.open(io.BytesIO(proc.stdout)).transpose(Image.FLIP_LEFT_RIGHT)
-            #img = Image.open(io.BytesIO(proc.stdout)).transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.FLIP_TOP_BOTTOM)
+            # img = Image.open(io.BytesIO(proc.stdout)).transpose(Image.FLIP_LEFT_RIGHT)
+            # img = Image.open(io.BytesIO(proc.stdout)).transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.FLIP_TOP_BOTTOM)
             img = Image.open(io.BytesIO(proc.stdout)).transpose(Image.FLIP_TOP_BOTTOM)
 
             # Deteksi objek
@@ -102,5 +104,5 @@ elif mode == "📱 Kamera HP Live Langsung (Browser)":
         key="yolo-live",
         video_processor_factory=YOLOTransformer,
         media_stream_constraints={"video": {"width": 320, "height": 240}, "audio": False},
-        async_processing=True
+        async_processing=True,
     )
